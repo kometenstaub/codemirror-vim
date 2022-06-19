@@ -3897,7 +3897,7 @@ export function initVim(CodeMirror) {
             if (continued) {
               return { ln: curr.ln, pos: curr.pos, };
             } else {
-              return { ln: curr.ln, pos: curr.pos - 1, };
+              return { ln: curr.ln, pos: lastSentencePos + 1, };
             }
           }
         }
