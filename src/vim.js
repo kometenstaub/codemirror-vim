@@ -3855,9 +3855,6 @@ export function initVim(CodeMirror) {
       var line = cm.getLine(ln);
       var stop = (line === "");
 
-      if (stop) {
-        return {ln: head.line, pos: head.ch}
-      }
 
       var curr = {
         line: line,
@@ -3866,11 +3863,20 @@ export function initVim(CodeMirror) {
         dir: dir,
       }
 
+      if (stop) {
+        return { ln: curr.ln, pos: curr.pos };
+      }
+      
       // Move one step to skip character we start on
       nextChar(cm, curr);
 
       var lastSentencePos;
-      var length = curr.line.length - 1
+      var length;
+      try {
+        length = curr.line.length - 1
+      } catch {
+        return {ln: ln, pos: pos}
+      }
       while (curr.line !== null) {
         lastSentencePos = curr.pos
         //var length = curr.line.length - 1
