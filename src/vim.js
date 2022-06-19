@@ -2134,6 +2134,10 @@ export function initVim(CodeMirror) {
         } else if (character === 't') {
           tmp = expandTagUnderCursor(cm, head, inclusive);
         } else if (character === 's') {
+          var end = getSentence(cm, head, motionArgs.repeat, 1, inclusive)
+          var start = getSentence(cm, head, motionArgs.repeat, -1, inclusive)
+
+/*
           var curLine = cm.getLine(head.line);
           var start;
           if (
@@ -2151,6 +2155,16 @@ export function initVim(CodeMirror) {
           } else {
             end = findSentence(cm, head, motionArgs.repeat, 1);
           }
+          // if i (not a): don't include the white space at the end
+          if (!inclusive) {
+            var increment = 1
+            while (isWhiteSpaceString(curLine[end.ch - increment])) {
+             increment += 1
+            }
+            increment -= 1
+            end = {line: end.line, ch: end.ch - increment}
+          }
+*/
           tmp = {start: start, end: end};
         } else {
           // No text object defined for this, don't move.
@@ -3808,21 +3822,178 @@ export function initVim(CodeMirror) {
       start = new Pos(i, 0);
       return { start: start, end: end };
     }
+  function getSentence(cm, cur, repeat, dir, inclusive /*includes whitespace*/) {
+      // call both directions
 
-    function findSentence(cm, cur, repeat, dir) {
-
-      /*
-        Takes an index object
-        {
-          line: the line string,
-          ln: line number,
-          pos: index in line,
-          dir: direction of traversal (-1 or 1)
+    /*
+	  Takes an index object
+	  {
+		line: the line string,
+		ln: line number,
+		pos: index in line,
+		dir: direction of traversal (-1 or 1)
+	  }
+	  and modifies the line, ln, and pos members to represent the
+	  next valid position or sets them to null if there are
+	  no more valid positions.
+	 */
+    function nextChar(cm, curr) {
+      if (curr.pos + curr.dir < 0 || curr.pos + curr.dir >= curr.line.length) {
+          curr.line = null
+          return;
         }
-        and modifies the line, ln, and pos members to represent the
-        next valid position or sets them to null if there are
-        no more valid positions.
-       */
+      else {
+        curr.pos += curr.dir;
+      }
+    }
+
+    /*
+	  Performs one iteration of traversal in forward direction
+	  Returns an index object of the new location
+	 */
+    function forward(cm, ln, pos, dir) {
+      var line = cm.getLine(ln);
+      var stop = (line === "");
+
+      if (stop) {
+        return {ln: head.line, pos: head.ch}
+      }
+
+      var curr = {
+        line: line,
+        ln: ln,
+        pos: pos,
+        dir: dir,
+      }
+
+      // Move one step to skip character we start on
+      nextChar(cm, curr);
+
+      var lastSentencePos;
+      var length = curr.line.length - 1
+      while (curr.line !== null) {
+        lastSentencePos = curr.pos
+        //var length = curr.line.length - 1
+
+        if (isEndOfSentenceSymbol(curr.line[curr.pos])) {
+          if (!inclusive) {
+            if (curr.pos + 1 > length) {
+              return { ln: curr.ln, pos: curr.pos };
+            } else {
+              return { ln: curr.ln, pos: curr.pos + 1 };
+            }
+          } else {
+            nextChar(cm, curr);
+            var continued = false;
+            while (curr.line !== null ) {
+              if (isWhiteSpaceString(curr.line[curr.pos])) {
+                continued = true
+                lastSentencePos = curr.pos
+                nextChar(cm, curr)
+              } else {
+                break;
+              }
+            }
+            if (continued) {
+              return { ln: curr.ln, pos: curr.pos, };
+            } else {
+              return { ln: curr.ln, pos: curr.pos - 1, };
+            }
+          }
+        }
+        nextChar(cm, curr);
+      }
+      return { ln: curr.ln, pos: lastSentencePos }
+    }
+
+    /*
+	  Performs one iteration of traversal in reverse direction
+	  Returns an index object of the new location
+	 */
+    function reverse(cm, ln, pos, dir) {
+      var line = cm.getLine(ln);
+
+      var curr = {
+        line: line,
+        ln: ln,
+        pos: pos,
+        dir: dir,
+      }
+
+      if (curr.line === "") {
+        return { ln: curr.ln, pos: curr.pos };
+      }
+      // Move one step to skip character we start on
+      nextChar(cm, curr);
+
+      var lastSentencePos;
+
+      while (curr.line !== null) {
+        if (!isWhiteSpaceString(curr.line[curr.pos]) && !isEndOfSentenceSymbol(curr.line[curr.pos])) {
+          lastSentencePos = curr.pos
+        }
+
+        else if (isEndOfSentenceSymbol(curr.line[curr.pos]) ) {
+          if (!inclusive) {
+            return { ln: curr.ln, pos: lastSentencePos };
+          } else {
+            var continued = false;
+            nextChar(cm, curr)
+            while (curr.line !== null) {
+              if (isWhiteSpaceString(curr.line[curr.pos])) {
+                continued = true;
+                lastSentencePos = curr.pos
+                nextChar(cm, curr)
+              } else {
+                break;
+              }
+            }
+            if (continued) {
+              return { ln: curr.ln, pos: curr.pos, };
+            } else {
+              return { ln: curr.ln, pos: curr.pos + 2, };
+            }
+          }
+        }
+
+        nextChar(cm, curr);
+      }
+      return { ln: curr.ln, pos: lastSentencePos }
+
+    }
+
+    var curr_index = {
+      ln: cur.line,
+      pos: cur.ch,
+    };
+
+    while (repeat > 0) {
+      if (dir < 0) {
+        curr_index = reverse(cm, curr_index.ln, curr_index.pos, dir);
+      }
+      else {
+        curr_index = forward(cm, curr_index.ln, curr_index.pos, dir);
+      }
+      repeat--;
+    }
+
+    return new Pos(curr_index.ln, curr_index.pos);
+  }
+
+  function findSentence(cm, cur, repeat, dir) {
+
+    /*
+	  Takes an index object
+	  {
+		line: the line string,
+		ln: line number,
+		pos: index in line,
+		dir: direction of traversal (-1 or 1)
+	  }
+	  and modifies the line, ln, and pos members to represent the
+	  next valid position or sets them to null if there are
+	  no more valid positions.
+	 */
       function nextChar(cm, idx) {
         if (idx.pos + idx.dir < 0 || idx.pos + idx.dir >= idx.line.length) {
           idx.ln += idx.dir;
