@@ -2141,35 +2141,6 @@ export function initVim(CodeMirror) {
               && isWhiteSpaceString(cm.getLine(end.line)[end.ch -1])) {
             start = {line: start.line, ch: start.ch + 1}
           }
-
-/*
-          var curLine = cm.getLine(head.line);
-          var start;
-          if (
-              head.ch === 0
-              || (isWhiteSpaceString(curLine[head.ch - 1]) && isEndOfSentenceSymbol(curLine[head.ch - 2]))
-              || (isEndOfSentenceSymbol(curLine[head.ch - 1]))
-          ) {
-            start = head;
-          } else {
-            start = findSentence(cm, head, motionArgs.repeat, -1);
-          }
-          var end;
-          if (isEndOfSentenceSymbol(curLine[head.ch])) {
-            end = {line: head.line, ch: head.ch + 1};
-          } else {
-            end = findSentence(cm, head, motionArgs.repeat, 1);
-          }
-          // if i (not a): don't include the white space at the end
-          if (!inclusive) {
-            var increment = 1
-            while (isWhiteSpaceString(curLine[end.ch - increment])) {
-             increment += 1
-            }
-            increment -= 1
-            end = {line: end.line, ch: end.ch - increment}
-          }
-*/
           tmp = {start: start, end: end};
         } else {
           // No text object defined for this, don't move.
