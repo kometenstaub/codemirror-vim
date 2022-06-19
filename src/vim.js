@@ -2136,6 +2136,11 @@ export function initVim(CodeMirror) {
         } else if (character === 's') {
           var end = getSentence(cm, head, motionArgs.repeat, 1, inclusive)
           var start = getSentence(cm, head, motionArgs.repeat, -1, inclusive)
+          // closer vim behaviour, 'a' only takes the space after the sentence if there is one before and after
+          if (isWhiteSpaceString(cm.getLine(start.line)[start.ch])
+              && isWhiteSpaceString(cm.getLine(end.line)[end.ch -1])) {
+            start = {line: start.line, ch: start.ch + 1}
+          }
 
 /*
           var curLine = cm.getLine(head.line);
@@ -3866,11 +3871,11 @@ export function initVim(CodeMirror) {
       if (stop) {
         return { ln: curr.ln, pos: curr.pos };
       }
-      
+
       // Move one step to skip character we start on
       nextChar(cm, curr);
 
-      var lastSentencePos;
+      var lastSentencePos = curr.pos;
       var length;
       try {
         length = curr.line.length - 1
@@ -3932,7 +3937,7 @@ export function initVim(CodeMirror) {
       // Move one step to skip character we start on
       nextChar(cm, curr);
 
-      var lastSentencePos;
+      var lastSentencePos = curr.pos;
 
       while (curr.line !== null) {
         if (!isWhiteSpaceString(curr.line[curr.pos]) && !isEndOfSentenceSymbol(curr.line[curr.pos])) {
