@@ -3799,8 +3799,6 @@ export function initVim(CodeMirror) {
       return { start: start, end: end };
     }
   function getSentence(cm, cur, repeat, dir, inclusive /*includes whitespace*/) {
-      // call both directions
-
     /*
 	  Takes an index object
 	  {
@@ -3810,7 +3808,7 @@ export function initVim(CodeMirror) {
 		dir: direction of traversal (-1 or 1)
 	  }
 	  and modifies the line, ln, and pos members to represent the
-	  next valid position or sets them to null if there are
+	  next valid position or sets the line to null if there are
 	  no more valid positions.
 	 */
     function nextChar(cm, curr) {
@@ -3822,7 +3820,6 @@ export function initVim(CodeMirror) {
         curr.pos += curr.dir;
       }
     }
-
     /*
 	  Performs one iteration of traversal in forward direction
 	  Returns an index object of the new location
@@ -3843,10 +3840,11 @@ export function initVim(CodeMirror) {
         return { ln: curr.ln, pos: curr.pos };
       }
 
+      var lastSentencePos = curr.pos;
+
       // Move one step to skip character we start on
       nextChar(cm, curr);
 
-      var lastSentencePos = curr.pos;
       var length;
       try {
         length = curr.line.length - 1
@@ -3859,11 +3857,7 @@ export function initVim(CodeMirror) {
 
         if (isEndOfSentenceSymbol(curr.line[curr.pos])) {
           if (!inclusive) {
-            if (curr.pos + 1 > length) {
-              return { ln: curr.ln, pos: curr.pos };
-            } else {
-              return { ln: curr.ln, pos: curr.pos + 1 };
-            }
+            return { ln: curr.ln, pos: curr.pos + 1 };
           } else {
             nextChar(cm, curr);
             var continued = false;
@@ -3885,7 +3879,7 @@ export function initVim(CodeMirror) {
         }
         nextChar(cm, curr);
       }
-      return { ln: curr.ln, pos: lastSentencePos }
+      return { ln: curr.ln, pos: lastSentencePos + 1 }
     }
 
     /*
@@ -3905,42 +3899,37 @@ export function initVim(CodeMirror) {
       if (curr.line === "") {
         return { ln: curr.ln, pos: curr.pos };
       }
-      // Move one step to skip character we start on
-      nextChar(cm, curr);
 
       var lastSentencePos = curr.pos;
 
+      // Move one step to skip character we start on
+      nextChar(cm, curr);
+
       while (curr.line !== null) {
         if (!isWhiteSpaceString(curr.line[curr.pos]) && !isEndOfSentenceSymbol(curr.line[curr.pos])) {
-          lastSentencePos = curr.pos
+          lastSentencePos = curr.pos;
         }
 
         else if (isEndOfSentenceSymbol(curr.line[curr.pos]) ) {
           if (!inclusive) {
             return { ln: curr.ln, pos: lastSentencePos };
           } else {
-            var continued = false;
-            nextChar(cm, curr)
-            while (curr.line !== null) {
-              if (isWhiteSpaceString(curr.line[curr.pos])) {
-                continued = true;
-                lastSentencePos = curr.pos
-                nextChar(cm, curr)
+              if (isWhiteSpaceString(curr.line[curr.pos + 1])) {
+                return { ln: curr.ln, pos: curr.pos + 1, };
               } else {
-                break;
+                return {ln: curr.ln, pos: lastSentencePos};
               }
-            }
-            if (continued) {
-              return { ln: curr.ln, pos: curr.pos, };
-            } else {
-              return { ln: curr.ln, pos: curr.pos + 2, };
-            }
           }
         }
 
         nextChar(cm, curr);
       }
-      return { ln: curr.ln, pos: lastSentencePos }
+      curr.line = line
+      if (inclusive && isWhiteSpaceString(curr.line[curr.pos])) {
+        return { ln: curr.ln, pos: curr.pos };
+      } else {
+        return { ln: curr.ln, pos: lastSentencePos };
+      }
 
     }
 
