@@ -3813,8 +3813,7 @@ export function initVim(CodeMirror) {
 	 */
     function nextChar(cm, curr) {
       if (curr.pos + curr.dir < 0 || curr.pos + curr.dir >= curr.line.length) {
-          curr.line = null
-          return;
+          curr.line = null;
         }
       else {
         curr.pos += curr.dir;
@@ -3826,17 +3825,15 @@ export function initVim(CodeMirror) {
 	 */
     function forward(cm, ln, pos, dir) {
       var line = cm.getLine(ln);
-      var stop = (line === "");
-
 
       var curr = {
         line: line,
         ln: ln,
         pos: pos,
         dir: dir,
-      }
+      };
 
-      if (stop) {
+      if (curr.line === "") {
         return { ln: curr.ln, pos: curr.pos };
       }
 
@@ -3845,41 +3842,27 @@ export function initVim(CodeMirror) {
       // Move one step to skip character we start on
       nextChar(cm, curr);
 
-      var length;
-      try {
-        length = curr.line.length - 1
-      } catch {
-        return {ln: ln, pos: pos}
-      }
       while (curr.line !== null) {
-        lastSentencePos = curr.pos
-        //var length = curr.line.length - 1
-
+        lastSentencePos = curr.pos;
         if (isEndOfSentenceSymbol(curr.line[curr.pos])) {
           if (!inclusive) {
             return { ln: curr.ln, pos: curr.pos + 1 };
           } else {
             nextChar(cm, curr);
-            var continued = false;
             while (curr.line !== null ) {
               if (isWhiteSpaceString(curr.line[curr.pos])) {
-                continued = true
-                lastSentencePos = curr.pos
+                lastSentencePos = curr.pos;
                 nextChar(cm, curr)
               } else {
                 break;
               }
             }
-            if (continued) {
-              return { ln: curr.ln, pos: curr.pos, };
-            } else {
-              return { ln: curr.ln, pos: lastSentencePos + 1, };
-            }
+            return { ln: curr.ln, pos: lastSentencePos + 1, };
           }
         }
         nextChar(cm, curr);
       }
-      return { ln: curr.ln, pos: lastSentencePos + 1 }
+      return { ln: curr.ln, pos: lastSentencePos + 1 };
     }
 
     /*
